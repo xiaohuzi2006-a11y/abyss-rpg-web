@@ -84,7 +84,7 @@ def save_game(player):
 if 'player' not in st.session_state:
     st.session_state.player = load_game()
 if 'monster' not in st.session_state:
-    st.session_state.monster = Monster("哥布林", 300, 20, "Goblin Ear")
+    st.session_state.monster = Monster("王一成", 300, 20, "Goblin Ear")
 if 'log' not in st.session_state:
     st.session_state.log = "⚔️ 欢迎来到深渊探索...\n"
 if 'joke' not in st.session_state:
@@ -179,7 +179,7 @@ if st.button("挥剑攻击！ ⚔️", type="primary", use_container_width=True)
         st.session_state.log += exp_msg
 
         # 刷新一只新王一成
-        st.session_state.monster = Monster("哥布林", 300, 20, "Goblin Ear")
+        st.session_state.monster = Monster("王一成", 300, 20, "Goblin Ear")
 
 # ==========================================
 # 7. 智慧酒馆 (API 交互)
