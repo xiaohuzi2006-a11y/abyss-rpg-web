@@ -122,6 +122,11 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.subheader(f"🦸‍♂️ {player.name}")
+        # use_container_width=True 会让图片自动适应左侧的宽度
+    try:
+        st.image("hero.png", use_container_width=True)
+    except FileNotFoundError:
+        st.info("🖼️ 等待画师提交英雄立绘...")
     # 确保进度条比例在 0.0 到 1.0 之间
     hp_ratio = max(0.0, min(1.0, player.hp / player.max_hp))
     st.write(f"🩸 HP: {player.hp} / {player.max_hp}")
@@ -130,6 +135,10 @@ with col1:
 
 with col2:
     st.subheader(f"👹 {goblin.name}")
+    try:
+        st.image("goblin.png", use_container_width=True)
+    except FileNotFoundError:
+        st.info("🖼️ 等待画师提交怪物立绘...")
     g_hp_ratio = max(0.0, min(1.0, goblin.hp / 500))
     st.write(f"🩸 HP: {goblin.hp} / 500")
     st.progress(g_hp_ratio)
@@ -175,18 +184,29 @@ st.divider()
 st.write("### 🍺 智慧酒馆")
 st.info(st.session_state.joke)
 
-if st.button("找老板聊聊（听笑话提升生命上限）", use_container_width=True):
+if st.button("找老板聊聊（听笑话提升生命上限）"):
     try:
-        url = "https://official-joke-api.appspot.com/random_joke"
-        res = requests.get(url, timeout=5)
-        data = res.json()
-        st.session_state.joke = f"【老板说】：{data['setup']} —— {data['punchline']}"
-        player.max_hp += 50
-        player.hp = player.max_hp  # 补满血
-        st.toast("✨ 生命上限提升了！")
-        st.rerun()
-    except:
-        st.error("📡 酒馆断网了。")
+        # 嫌疑 1 解决：把 timeout 延长到 5 秒
+        res = requests.get("https://v2.jokeapi.dev/joke/Any", timeout=5)
+
+        if res.status_code == 200:
+            data = res.json()
+
+            # 嫌疑 2 解决：兼容单句笑话和双句笑话
+            if data.get("type") == "single":
+                st.session_state.joke = data["joke"]
+            elif data.get("type") == "twopart":
+                st.session_state.joke = f"{data['setup']} —— {data['delivery']}"
+            else:
+                st.session_state.joke = "老板今天不想说话。"
+
+            player.max_hp += 10
+        else:
+            st.error(f"服务器抗议了，状态码: {res.status_code}")
+
+    except Exception as e:
+        # ✨ 核心排错法宝：把真正的报错原因 e 打印在网页上！
+        st.error(f"📡 酒馆断网了。真实报错原因：{e}")
 
 st.divider()
 
