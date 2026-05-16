@@ -54,7 +54,7 @@ if 'player' not in st.session_state:
         st.session_state.player = Hero("亚瑟", 1000, 1000, 150)
 
 if 'goblin' not in st.session_state:
-    st.session_state.goblin = Monster("哥布林", 500, 150, "Goblin Ear")
+    st.session_state.goblin = Monster("哥布林", 500, 200, "Goblin Ear")
 
 if 'battle_log' not in st.session_state:
     st.session_state.battle_log = ["📜 冒险开始了..."]
