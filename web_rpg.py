@@ -160,7 +160,7 @@ if player.hp > 0 and goblin.hp > 0:
 elif goblin.hp <= 0:
     st.success("🎉 哥布林已倒下！你可以继续去酒馆增强实力或保存进度。")
     if st.button("复活怪物"):
-        st.session_state.goblin.hp = 300
+        st.session_state.goblin.hp = 500
         st.rerun()
 
 elif player.hp <= 0:
