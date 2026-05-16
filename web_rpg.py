@@ -130,8 +130,8 @@ with col1:
 
 with col2:
     st.subheader(f"👹 {goblin.name}")
-    g_hp_ratio = max(0.0, min(1.0, goblin.hp / 300))
-    st.write(f"🩸 HP: {goblin.hp} / 300")
+    g_hp_ratio = max(0.0, min(1.0, goblin.hp / 500))
+    st.write(f"🩸 HP: {goblin.hp} / 500")
     st.progress(g_hp_ratio)
     st.write(f"🎁 掉落: {goblin.drop_item}")
 
