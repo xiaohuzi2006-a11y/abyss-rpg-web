@@ -5,18 +5,36 @@ import os
 
 
 # ==========================================
-# 1. 核心图纸 (Classes)
+# 1. 核心图纸 (Classes) - 加入打怪升级引擎
 # ==========================================
 class Hero:
-    def __init__(self, name, hp, max_hp, attack_power, gold=0):
+    def __init__(self, name, hp, max_hp, attack_power, gold=0, level=1, exp=0):
         self.name = name
         self.hp = hp
         self.max_hp = max_hp
         self.attack_power = attack_power
         self.gold = gold
+        self.level = level
+        self.exp = exp
 
     def attack(self, target):
         target.hp -= self.attack_power
+
+    def gain_exp(self, amount):
+        self.exp += amount
+        log_msg = f"✨ 获得 {amount} 点经验！\n"
+        max_exp_needed = self.level * 100
+
+        while self.exp >= max_exp_needed:
+            self.exp -= max_exp_needed
+            self.level += 1
+            self.max_hp += 200
+            self.hp = self.max_hp
+            self.attack_power += 50
+            log_msg += f"🎉 升级啦！当前等级: Lv.{self.level}！属性大幅提升，生命回满！\n"
+            max_exp_needed = self.level * 100
+
+        return log_msg
 
 
 class Monster:
@@ -26,173 +44,157 @@ class Monster:
         self.attack_power = attack_power
         self.drop_item = drop_item
 
-    def attack(self, target):
-        target.hp -= self.attack_power
-
 
 # ==========================================
-# 2. 自动读档与初始化逻辑 (核心升级)
+# 2. 存档系统 - 兼容新属性的读写
 # ==========================================
-# 只要不刷新网页，session_state 就会保留；如果刷新，则尝试从 JSON 文件读取
-if 'player' not in st.session_state:
-    # 检查本地是否有存档文件
+def load_game():
     if os.path.exists("web_save.json"):
         with open("web_save.json", "r", encoding="utf-8") as f:
-            save_data = json.load(f)
+            data = json.load(f)
+            # 使用 .get() 可以兼容老存档，老存档没 level 默认给 1
+            return Hero(
+                name=data.get("name", "奶牛"),
+                hp=data.get("hp", 1000),
+                max_hp=data.get("max_hp", 1000),
+                attack_power=data.get("attack_power", 150),
+                gold=data.get("gold", 0),
+                level=data.get("level", 1),
+                exp=data.get("exp", 0)
+            )
+    return Hero("奶牛", 1000, 1000, 150)
 
-        # 使用存档数据初始化英雄
-        st.session_state.player = Hero(
-            save_data["name"],
-            save_data["hp"],
-            save_data["max_hp"],
-            save_data["attack_power"],
-            save_data["gold"]
-        )
-        st.toast("📂 存档已自动加载！欢迎回来，大侠。")
-    else:
-        # 没有任何存档时，创建初始亚瑟
-        st.session_state.player = Hero("亚瑟", 1000, 1000, 150)
 
-if 'goblin' not in st.session_state:
-    st.session_state.goblin = Monster("哥布林", 500, 200, "Goblin Ear")
+def save_game(player):
+    with open("web_save.json", "w", encoding="utf-8") as f:
+        json.dump({
+            "name": player.name,
+            "hp": player.hp,
+            "max_hp": player.max_hp,
+            "attack_power": player.attack_power,
+            "gold": player.gold,
+            "level": player.level,  # 保存等级
+            "exp": player.exp  # 保存经验
+        }, f)
 
-if 'battle_log' not in st.session_state:
-    st.session_state.battle_log = ["📜 冒险开始了..."]
 
+# ==========================================
+# 3. 初始化世界记忆 (Session State)
+# ==========================================
+if 'player' not in st.session_state:
+    st.session_state.player = load_game()
+if 'monster' not in st.session_state:
+    st.session_state.monster = Monster("哥布林", 300, 20, "Goblin Ear")
+if 'log' not in st.session_state:
+    st.session_state.log = "⚔️ 欢迎来到深渊探索...\n"
 if 'joke' not in st.session_state:
-    st.session_state.joke = "🍺 酒馆老板正忙着擦杯子，还没说话。"
+    st.session_state.joke = ""
 
-# 简化对象引用
 player = st.session_state.player
-goblin = st.session_state.goblin
+monster = st.session_state.monster
 
 # ==========================================
-# 3. 网页视觉布局 (UI)
+# 4. 侧边栏：国际黑市 (Shop)
 # ==========================================
-st.set_page_config(page_title="深渊探索 RPG", page_icon="⚔️")
-st.title("⚔️ 深渊探索 RPG - 网页完全体")
-# ==========================================
-# 🎁 新增模块：国际黑市 (Global Item Shop)
-# ==========================================
-# 使用 with 语句，下面所有缩进的内容都会自动放进侧边栏！
 with st.sidebar:
-    st.title("🛒 Global Black Market")
+    st.header("🛒 国际黑市")
     st.write("神秘的外国商人向你敞开大门：'Show me your gold!'")
-
-    # 商店库存字典
-    shop_items = {
-        "Iron Sword (铁剑)": {"cost": 50, "attack": 100, "type": "weapon"},
-        "Health Potion (恢复药水)": {"cost": 30, "heal": 200, "type": "potion"},
-        "Dragon Armor (龙鳞甲)": {"cost": 100, "max_hp": 500, "type": "armor"}
-    }
-
-    # 这里的 st.info 会自动变成 st.sidebar.info
-    st.info(f"💳 Your Balance: {player.gold} Gold")
-
-    for item_name, stats in shop_items.items():
-        st.write(f"**{item_name}**")
-        st.write(f"🪙 Price: {stats['cost']} Gold")
-
-        # 这里的 st.button 也会自动放进侧边栏
-        if st.button(f"Buy {item_name.split(' ')[0]}"):
-            if player.gold >= stats['cost']:
-                player.gold -= stats['cost']
-
-                if stats['type'] == "weapon":
-                    player.attack_power += stats['attack']
-                    st.success(f"⚔️ Attack Up! (+{stats['attack']})")
-
-                elif stats['type'] == "potion":
-                    player.hp = min(player.max_hp, player.hp + stats['heal'])
-                    st.success(f"🧪 HP Recovered! (+{stats['heal']})")
-
-                elif stats['type'] == "armor":
-                    player.max_hp += stats['max_hp']
-                    player.hp += stats['max_hp']
-                    st.success(f"🛡️ Max HP Up! (+{stats['max_hp']})")
-
-                st.rerun()
-
-            else:
-                st.error("❌ Not enough gold!")
+    st.info(f"💳 你的余额: {player.gold} 金币")
 
     st.divider()
+    st.write("🗡️ **Iron Sword (铁剑)** - +50 攻击力")
+    if st.button("购买 Iron Sword (50 金币)"):
+        if player.gold >= 50:
+            player.gold -= 50
+            player.attack_power += 50
+            st.success("购买成功！攻击力提升！")
+        else:
+            st.error("金币不足！")
+
+    st.write("🧪 **Health Potion (恢复药水)** - 回复 300 HP")
+    if st.button("购买 Potion (30 金币)"):
+        if player.gold >= 30:
+            player.gold -= 30
+            player.hp = min(player.hp + 300, player.max_hp)
+            st.success("咕噜咕噜... HP 恢复了！")
+        else:
+            st.error("金币不足！")
+
+# ==========================================
+# 5. 网页视觉布局 (UI) - 图片与等级面板
+# ==========================================
+st.set_page_config(page_title="深渊探索 RPG", page_icon="⚔️")
+st.title("⚔️ 深渊探索 RPG - 视觉与数值觉醒版")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader(f"🦸‍♂️ {player.name}")
-        # use_container_width=True 会让图片自动适应左侧的宽度
+    st.subheader(f"🦸‍♂️ Lv.{player.level} {player.name}")
+    st.caption(f"✨ EXP: {player.exp} / {player.level * 100}")
+
     try:
-        st.image("hero.png", use_container_width=True)
+        st.image("hero.jpg", use_container_width=True)  # 如果你用的是 png，改这里！
     except FileNotFoundError:
         st.info("🖼️ 等待画师提交英雄立绘...")
-    # 确保进度条比例在 0.0 到 1.0 之间
+
     hp_ratio = max(0.0, min(1.0, player.hp / player.max_hp))
     st.write(f"🩸 HP: {player.hp} / {player.max_hp}")
     st.progress(hp_ratio)
     st.write(f"⚔️ 攻击: {player.attack_power} | 💰 金币: {player.gold}")
 
 with col2:
-    st.subheader(f"👹 {goblin.name}")
+    st.subheader(f"👹 {monster.name}")
+
     try:
-        st.image("goblin.png", use_container_width=True)
+        st.image("goblin.jpg", use_container_width=True)  # 如果你用的是 png，改这里！
     except FileNotFoundError:
         st.info("🖼️ 等待画师提交怪物立绘...")
-    g_hp_ratio = max(0.0, min(1.0, goblin.hp / 500))
-    st.write(f"🩸 HP: {goblin.hp} / 500")
+
+    g_hp_ratio = max(0.0, min(1.0, monster.hp / 300))
+    st.write(f"🩸 HP: {monster.hp} / 300")
     st.progress(g_hp_ratio)
-    st.write(f"🎁 掉落: {goblin.drop_item}")
+    st.write(f"🎁 掉落: {monster.drop_item}")
 
 st.divider()
 
 # ==========================================
-# 4. 战斗交互逻辑
+# 6. 战斗交互逻辑
 # ==========================================
-if player.hp > 0 and goblin.hp > 0:
-    if st.button("挥剑攻击！ ⚔️", type="primary", use_container_width=True):
-        # 1. 玩家攻击
-        player.attack(goblin)
-        st.session_state.battle_log.append(f"🗡️ 你砍了哥布林一剑，造成 {player.attack_power} 点伤害！")
+if st.button("挥剑攻击！ ⚔️", type="primary", use_container_width=True):
+    player.attack(monster)
+    st.session_state.log += f"🗡️ 你对 {monster.name} 造成了 {player.attack_power} 点伤害！\n"
 
-        # 2. 怪物反击
-        if goblin.hp > 0:
-            goblin.attack(player)
-            st.session_state.battle_log.append(f"🐾 哥布林反击，造成 {goblin.attack_power} 点伤害！")
-        else:
-            st.session_state.battle_log.append(f"🏆 击败了哥布林！获得 20 金币！")
-            player.gold += 20
-            st.balloons()
+    if monster.hp > 0:
+        player.hp -= monster.attack_power
+        st.session_state.log += f"💥 {monster.name} 反击了！你受到了 {monster.attack_power} 点伤害！\n"
+        if player.hp <= 0:
+            st.session_state.log += "💀 你阵亡了... 请刷新页面重新开始。\n"
+    else:
+        st.session_state.log += f"💀 {monster.name} 被击败了！\n"
+        st.session_state.log += f"💰 获得了 20 金币！\n"
+        player.gold += 20
 
-        st.rerun()
+        # 获取经验并判断是否升级
+        exp_msg = player.gain_exp(50)
+        st.session_state.log += exp_msg
 
-elif goblin.hp <= 0:
-    st.success("🎉 哥布林已倒下！你可以继续去酒馆增强实力或保存进度。")
-    if st.button("复活怪物"):
-        st.session_state.goblin.hp = 500
-        st.rerun()
+        # 刷新一只新王一成
+        st.session_state.monster = Monster("哥布林", 300, 20, "Goblin Ear")
 
-elif player.hp <= 0:
-    st.error("☠️ 你已力战而亡。")
-    if st.button("满血复活"):
-        st.session_state.player.hp = st.session_state.player.max_hp
-        st.rerun()
-
+# ==========================================
+# 7. 智慧酒馆 (API 交互)
+# ==========================================
 st.divider()
+st.subheader("🍺 智慧酒馆")
 
-# --- 智慧酒馆 (API 联动) ---
-st.write("### 🍺 智慧酒馆")
-st.info(st.session_state.joke)
+if st.session_state.joke:
+    st.info(f"【老板说】：{st.session_state.joke}")
 
 if st.button("找老板聊聊（听笑话提升生命上限）"):
     try:
-        # 嫌疑 1 解决：把 timeout 延长到 5 秒
         res = requests.get("https://v2.jokeapi.dev/joke/Any", timeout=5)
-
         if res.status_code == 200:
             data = res.json()
-
-            # 嫌疑 2 解决：兼容单句笑话和双句笑话
             if data.get("type") == "single":
                 st.session_state.joke = data["joke"]
             elif data.get("type") == "twopart":
@@ -201,43 +203,24 @@ if st.button("找老板聊聊（听笑话提升生命上限）"):
                 st.session_state.joke = "老板今天不想说话。"
 
             player.max_hp += 10
+            player.hp += 10
+            st.session_state.log += "💖 听了老板的笑话，心情大好，生命上限 +10！\n"
         else:
             st.error(f"服务器抗议了，状态码: {res.status_code}")
 
     except Exception as e:
-        # ✨ 核心排错法宝：把真正的报错原因 e 打印在网页上！
         st.error(f"📡 酒馆断网了。真实报错原因：{e}")
 
+# ==========================================
+# 8. 战斗日志显示
+# ==========================================
 st.divider()
+st.text_area("📜 战斗日志", value=st.session_state.log, height=200)
 
-# --- 记忆神殿 (存档功能) ---
-st.write("### 💾 记忆神殿")
-col_save, col_clear = st.columns(2)
-
-with col_save:
-    if st.button("💾 保存当前进度", use_container_width=True):
-        save_data = {
-            "name": player.name,
-            "hp": player.hp,
-            "max_hp": player.max_hp,
-            "attack_power": player.attack_power,
-            "gold": player.gold
-        }
-        with open("web_save.json", "w", encoding="utf-8") as f:
-            json.dump(save_data, f, ensure_ascii=False, indent=4)
-        st.success("进度已保存！下次打开会自动加载。")
-
-with col_clear:
-    if st.button("🗑️ 删除存档并重置", use_container_width=True):
-        if os.path.exists("web_save.json"):
-            os.remove("web_save.json")
-        st.cache_data.clear()
-        st.write("存档已删，请手动刷新页面重置游戏。")
-
+# ==========================================
+# 9. 手动存档按钮
+# ==========================================
 st.divider()
-
-# --- 战斗日志 ---
-st.write("### 📜 冒险记录")
-for log in reversed(st.session_state.battle_log):
-    st.write(log)
-
+if st.button("💾 在篝火旁休息（保存游戏）"):
+    save_game(player)
+    st.success("✅ 游戏进度已保存！")
