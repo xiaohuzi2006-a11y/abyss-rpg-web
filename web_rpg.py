@@ -133,7 +133,7 @@ with col1:
     st.caption(f"✨ EXP: {player.exp} / {player.level * 100}")
 
     try:
-        st.image("hero.jpg", use_container_width=True)  # 如果你用的是 png，改这里！
+        st.image("hero.png", use_container_width=True)  # 如果你用的是 png，改这里！
     except FileNotFoundError:
         st.info("🖼️ 等待画师提交英雄立绘...")
 
@@ -146,7 +146,7 @@ with col2:
     st.subheader(f"👹 {monster.name}")
 
     try:
-        st.image("goblin.jpg", use_container_width=True)  # 如果你用的是 png，改这里！
+        st.image("goblin.png", use_container_width=True)  # 如果你用的是 png，改这里！
     except FileNotFoundError:
         st.info("🖼️ 等待画师提交怪物立绘...")
 
